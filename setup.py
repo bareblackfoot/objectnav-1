@@ -36,7 +36,7 @@ DEFAULT_EXCLUSION = ["test", "examples"]
 FULL_REQUIREMENTS = set()
 # collect requirements.txt file in all subdirectories
 for file_name in ["requirements.txt"] + glob.glob(
-    "habitat_baselines/**/requirements.txt", recursive=True
+    "habitat_baselines_/**/requirements.txt", recursive=True
 ):
     with open(file_name) as f:
         reqs = f.read()

@@ -15,14 +15,14 @@ import argparse
 
 import habitat
 from habitat.config import Config
-from habitat_baselines.config.default import get_config
+from habitat_baselines_.config.default import get_config
 from habitat.sims.habitat_simulator.actions import (
     HabitatSimActions,
 )
 from habitat.utils.visualizations import maps
 from habitat.utils.visualizations.utils import images_to_video
-from habitat_baselines.agents.coverage_agents import RandomCoverageAgent
-from habitat_baselines.agents.ppo_coverage_agents import PPOAgent
+from habitat_baselines_.agents.coverage_agents import RandomCoverageAgent
+from habitat_baselines_.agents.ppo_coverage_agents import PPOAgent
 
 IMAGE_DIR = os.path.join("/srv/share/jye72/vis", "videos")
 if not os.path.exists(IMAGE_DIR):

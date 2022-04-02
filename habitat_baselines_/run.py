@@ -52,8 +52,16 @@ def get_parser():
         "--base-config",
         "-b",
         type=str,
-        default="/srv/flash1/jye72/projects/embodied-recall/habitat_baselines/config/objectnav/obj_base.on.yaml",
+        default="./habitat_baselines_/config/objectnav/obj_base.on.yaml",
         help="path to universal config (for most of your experiments)"
+    )
+
+    parser.add_argument(
+        "--project-dir",
+        "-p",
+        default=".",
+        type=str,
+        help="full path to project"
     )
 
     parser.add_argument(
@@ -128,9 +136,9 @@ def get_parser():
 
 def main():
     # Change dir so that no matter where we invoke this script (i.e. manually via CLI or from another script like `eval_cron`), imports are correct
-    os.chdir('/srv/flash1/jye72/projects/embodied-recall')
     parser = get_parser()
     args = parser.parse_args()
+    os.chdir(args.project_dir)
     run_exp(**vars(args))
 
 def wipe_and_exit(config):
@@ -148,6 +156,7 @@ def wipe_and_exit(config):
 def run_exp(
     exp_config: str,
     run_type: str,
+    project_dir=".",
     base_config="",
     ckpt_path="",
     eval_viz=False,
@@ -177,7 +186,7 @@ def run_exp(
     """
     if run_suffix is not None:
         exp_dir, exp_yaml = os.path.split(exp_config)
-        exp_config = os.path.join(exp_dir, run_suffix, exp_yaml)
+        exp_config = os.path.join(project_dir, exp_dir, run_suffix, exp_yaml)
     config = get_config([base_config, exp_config], opts)
 
     variant_name = os.path.split(exp_config)[1].split('.')[0]
@@ -186,15 +195,16 @@ def run_exp(
     # If we have a suffix, update the variants appropriately
     if run_suffix is not None:
         if RUN_FOLDER_MODE:
-            config.TENSORBOARD_DIR = os.path.join(config.TENSORBOARD_DIR, run_suffix, variant_name)
-            config.CHECKPOINT_FOLDER = os.path.join(config.CHECKPOINT_FOLDER, run_suffix, variant_name)
-            config.VIDEO_DIR = os.path.join(config.VIDEO_DIR, run_suffix, variant_name)
+            config.TENSORBOARD_DIR = os.path.join(
+                project_dir, config.TENSORBOARD_DIR, run_suffix, variant_name)
+            config.CHECKPOINT_FOLDER = os.path.join(project_dir, config.CHECKPOINT_FOLDER, run_suffix, variant_name)
+            config.VIDEO_DIR = os.path.join(project_dir, config.VIDEO_DIR, run_suffix, variant_name)
         variant_name = f"{variant_name}-{run_suffix}"
     if not RUN_FOLDER_MODE:
-        config.TENSORBOARD_DIR = os.path.join(config.TENSORBOARD_DIR, variant_name)
-        config.CHECKPOINT_FOLDER = os.path.join(config.CHECKPOINT_FOLDER, variant_name)
-        config.VIDEO_DIR = os.path.join(config.VIDEO_DIR, variant_name)
-    config.LOG_FILE = os.path.join(config.LOG_FILE, f"{variant_name}.log") # actually a logdir
+        config.TENSORBOARD_DIR = os.path.join(project_dir, config.TENSORBOARD_DIR, variant_name)
+        config.CHECKPOINT_FOLDER = os.path.join(project_dir, config.CHECKPOINT_FOLDER, variant_name)
+        config.VIDEO_DIR = os.path.join(project_dir, config.VIDEO_DIR, variant_name)
+    config.LOG_FILE = os.path.join(project_dir, config.LOG_FILE, f"{variant_name}.log") # actually a logdir
 
     if wipe_only:
         wipe_and_exit(config)

@@ -13,7 +13,7 @@ from collections import OrderedDict, defaultdict, deque
 import numpy as np
 import torch
 from gym import spaces
-from gym.spaces.dict_space import Dict as SpaceDict
+from gym.spaces.dict import Dict as SpaceDict
 from torch import distributed as distrib
 from torch import nn as nn
 from torch.optim.lr_scheduler import LambdaLR

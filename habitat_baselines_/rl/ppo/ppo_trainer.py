@@ -158,10 +158,10 @@ class PPOTrainer(BaseRLTrainer):
                 "FP16 requires PyTorch >= 1.6.0, please update your PyTorch"
             )
 
-        if self._fp16_autocast and not is_fp16_autocast_supported():
-            raise RuntimeError(
-                "FP16 autocast requires PyTorch >= 1.7.1, please update your PyTorch"
-            )
+        # if self._fp16_autocast and not is_fp16_autocast_supported():
+        #     raise RuntimeError(
+        #         "FP16 autocast requires PyTorch >= 1.7.1, please update your PyTorch"
+        #     )
 
     def _setup_auxiliary_tasks(self, aux_cfg, ppo_cfg, task_cfg, observation_space=None, is_eval=False, policy_encoders=["rgb", "depth"]):
         r"""

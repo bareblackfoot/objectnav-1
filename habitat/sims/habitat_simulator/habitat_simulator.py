@@ -4,7 +4,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union, Set, Callable, Dict
 
 import numpy as np
 from gym import spaces
@@ -28,8 +28,15 @@ from habitat.core.spaces import Space
 
 RGBSENSOR_DIMENSION = 3
 
+class HabitatSimSensor:
+    sim_sensor_type: habitat_sim.SensorType
+    _get_default_spec = Callable[..., habitat_sim.sensor.SensorSpec]
+    _config_ignore_keys = {"height", "type", "width"}
 
-def overwrite_config(config_from: Config, config_to: Any) -> None:
+
+def overwrite_config(config_from: Config, config_to: Any, ignore_keys:
+Optional[Set[str]] = None,
+    trans_dict: Optional[Dict[str, Callable]] = None) -> None:
     r"""Takes Habitat Lab config and Habitat-Sim config structures. Overwrites
     Habitat-Sim config with Habitat Lab values, where a field name is present
     in lowercase. Mostly used to avoid :ref:`sim_cfg.field = hapi_cfg.FIELD`
@@ -47,8 +54,25 @@ def overwrite_config(config_from: Config, config_to: Any) -> None:
             return config
 
     for attr, value in config_from.items():
-        if hasattr(config_to, attr.lower()):
-            setattr(config_to, attr.lower(), if_config_to_lower(value))
+        low_attr = attr.lower()
+        if ignore_keys is None or low_attr not in ignore_keys:
+            if hasattr(config_to, low_attr):
+                if trans_dict is not None and low_attr in trans_dict:
+                    setattr(config_to, low_attr, trans_dict[low_attr](value))
+                else:
+                    setattr(config_to, low_attr, if_config_to_lower(value))
+            else:
+                raise NameError(
+                    f"""{low_attr} is not found on habitat_sim but is found on habitat_lab config.
+                    It's also not in the list of keys to ignore: {ignore_keys}
+                    Did you make a typo in the config?
+                    If not the version of Habitat Sim may not be compatible with Habitat Lab version: {config_from}
+                    """
+                )
+
+    # for attr, value in config_from.items():
+    #     if hasattr(config_to, attr.lower()):
+    #         setattr(config_to, attr.lower(), if_config_to_lower(value))
 
 
 def check_sim_obs(obs, sensor):
@@ -180,7 +204,10 @@ class HabitatSim(habitat_sim.Simulator, Simulator):
 
         self._sensor_suite = SensorSuite(sim_sensors)
         self.sim_config = self.create_sim_config(self._sensor_suite)
-        self._current_scene = self.sim_config.sim_cfg.scene.id
+        try:
+            self._current_scene = self.sim_config.sim_cfg.scene_id
+        except:
+            self._current_scene = self.sim_config.sim_cfg.scene.id
         super().__init__(self.sim_config)
         self._action_space = spaces.Discrete(
             len(self.sim_config.agents[0].action_space)
@@ -194,24 +221,50 @@ class HabitatSim(habitat_sim.Simulator, Simulator):
         overwrite_config(
             config_from=self.habitat_config.HABITAT_SIM_V0,
             config_to=sim_config,
+            ignore_keys={"gpu_gpu"}
         )
-        sim_config.scene.id = self.habitat_config.SCENE
+        if not hasattr(sim_config, "scene_id"):
+            sim_config.scene.id = self.habitat_config.SCENE
+        else:
+            sim_config.scene_id = self.habitat_config.SCENE
         agent_config = habitat_sim.AgentConfiguration()
         overwrite_config(
-            config_from=self._get_agent_config(), config_to=agent_config
+            config_from=self._get_agent_config(), config_to=agent_config,
+                ignore_keys={
+                "is_set_start_state",
+                "sensors",
+                "start_position",
+                "start_rotation",
+            }
         )
 
         sensor_specifications = []
         for sensor in _sensor_suite.sensors.values():
-            sim_sensor_cfg = habitat_sim.SensorSpec()
+            # sim_sensor_cfg = habitat_sim.SensorSpec()
+            sim_sensor_cfg = habitat_sim.CameraSensorSpec()
+            _config_ignore_keys = {
+                "max_depth",
+                "min_depth",
+                "normalize_depth",
+                "type",
+                "angle",
+                "height",
+                "width",
+                # "hfov",
+                "num_camera",
+                "sensor_subtype"
+            }.union(HabitatSimSensor._config_ignore_keys)
             overwrite_config(
-                config_from=sensor.config, config_to=sim_sensor_cfg
-            )
+                config_from=sensor.config, config_to=sim_sensor_cfg,
+                ignore_keys=_config_ignore_keys)
+            # overwrite_config(
+            #     config_from=sensor.config, config_to=sim_sensor_cfg
+            # )
             sim_sensor_cfg.uuid = sensor.uuid
             sim_sensor_cfg.resolution = list(
                 sensor.observation_space.shape[:2]
             )
-            sim_sensor_cfg.parameters["hfov"] = str(sensor.config.HFOV)
+            # sim_sensor_cfg.parameters["hfov"] = str(sensor.config.HFOV)
 
             # TODO(maksymets): Add configure method to Sensor API to avoid
             # accessing child attributes through parent interface
@@ -291,7 +344,7 @@ class HabitatSim(habitat_sim.Simulator, Simulator):
         self.habitat_config = habitat_config
         self.sim_config = self.create_sim_config(self._sensor_suite)
         if not is_same_scene:
-            self._current_scene = habitat_config.SCENE
+            self._current_scene = habitat_config.sim_cfg.scene.id
             self.close()
             super().reconfigure(self.sim_config)
 

@@ -11,7 +11,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, Union
 import gym
 import numba
 import numpy as np
-from gym.spaces.dict_space import Dict as SpaceDict
+from gym.spaces.dict import Dict as SpaceDict
 
 from habitat.config import Config
 from habitat.core.dataset import Dataset, Episode, EpisodeIterator
